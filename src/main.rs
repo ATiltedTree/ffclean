@@ -52,7 +52,7 @@ fn main() {
                 chapter.time_base(),
                 chapter.start(),
                 chapter.end(),
-                chapter.metadata().get("title").unwrap(),
+                chapter.metadata().get("title").unwrap_or_default(),
             )
             .unwrap();
     }
