@@ -10,7 +10,7 @@ fn main() {
     let mut output = format::output(&output).unwrap();
 
     for is in input.streams() {
-        let ist_medium = is.parameters().medium();
+        let imedium = is.parameters().medium();
         let imeta = is.metadata();
 
         let mut os = output.add_stream(encoder::find(codec::Id::None)).unwrap();
@@ -18,24 +18,23 @@ fn main() {
 
         let mut ometa = ffmpeg::Dictionary::new();
 
-        if let Some(lang) = imeta.get("language") {
-            ometa.set("language", lang);
+        macro_rules! map_meta {
+            ($meta:literal) => {
+                if let Some(meta) = imeta.get($meta) {
+                    ometa.set($meta, meta);
+                }
+            };
         }
 
-        if ist_medium == media::Type::Subtitle {
-            if let Some(title) = imeta.get("title") {
-                ometa.set("title", title);
-            }
+        map_meta!("language");
+
+        if imedium == media::Type::Subtitle {
+            map_meta!("title");
         }
 
-        if ist_medium == media::Type::Attachment {
-            if let Some(filename) = imeta.get("filename") {
-                ometa.set("filename", filename);
-            }
-
-            if let Some(mimetype) = imeta.get("mimetype") {
-                ometa.set("mimetype", mimetype);
-            }
+        if imedium == media::Type::Attachment {
+            map_meta!("filename");
+            map_meta!("mimetype");
         }
 
         os.set_metadata(ometa);
@@ -57,10 +56,8 @@ fn main() {
     output.write_header().unwrap();
 
     for (stream, mut packet) in input.packets() {
-        let ist_index = stream.index();
-        let ost = output.stream(ist_index as _).unwrap();
         packet.set_position(-1);
-        packet.set_stream(ist_index as _);
+        packet.set_stream(stream.index());
         packet.write_interleaved(&mut output).unwrap();
     }
 
