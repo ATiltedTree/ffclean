@@ -1,19 +1,19 @@
 use ffmpeg::{codec, encoder, format, media};
 
-fn main() {
-    ffmpeg::init().unwrap();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ffmpeg::init()?;
 
-    let input = std::env::args().nth(1).unwrap();
-    let output = std::env::args().nth(2).unwrap();
+    let input = std::env::args().nth(1).expect("No input");
+    let output = std::env::args().nth(2).expect("No output");
 
-    let mut input = format::input(&input).unwrap();
-    let mut output = format::output(&output).unwrap();
+    let mut input = format::input(&input)?;
+    let mut output = format::output(&output)?;
 
     for is in input.streams() {
         let imedium = is.parameters().medium();
         let imeta = is.metadata();
 
-        let mut os = output.add_stream(encoder::find(codec::Id::None)).unwrap();
+        let mut os = output.add_stream(encoder::find(codec::Id::None))?;
         os.set_parameters(is.parameters());
 
         let mut ometa = ffmpeg::Dictionary::new();
@@ -41,25 +41,25 @@ fn main() {
     }
 
     for chapter in input.chapters() {
-        output
-            .add_chapter(
-                chapter.id(),
-                chapter.time_base(),
-                chapter.start(),
-                chapter.end(),
-                chapter.metadata().get("title").unwrap_or_default(),
-            )
-            .unwrap();
+        output.add_chapter(
+            chapter.id(),
+            chapter.time_base(),
+            chapter.start(),
+            chapter.end(),
+            chapter.metadata().get("title").unwrap_or_default(),
+        )?;
     }
 
     output.set_metadata(ffmpeg::Dictionary::new());
-    output.write_header().unwrap();
+    output.write_header()?;
 
     for (stream, mut packet) in input.packets() {
         packet.set_position(-1);
         packet.set_stream(stream.index());
-        packet.write_interleaved(&mut output).unwrap();
+        packet.write_interleaved(&mut output)?;
     }
 
-    output.write_trailer().unwrap();
+    output.write_trailer()?;
+
+    Ok(())
 }
