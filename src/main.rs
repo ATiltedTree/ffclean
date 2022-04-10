@@ -1,4 +1,4 @@
-use ffmpeg::{codec, encoder, format, media, Rational};
+use ffmpeg::{codec, encoder, format, media};
 
 fn main() {
     ffmpeg::init().unwrap();
@@ -9,22 +9,8 @@ fn main() {
     let mut input = format::input(&input).unwrap();
     let mut output = format::output(&output).unwrap();
 
-    let mut stream_mapping = vec![0; input.nb_streams() as _];
-    let mut ist_time_bases = vec![Rational(0, 1); input.nb_streams() as _];
-    let mut ost_index = 0;
-
-    for (ist_index, is) in input.streams().enumerate() {
+    for is in input.streams() {
         let ist_medium = is.parameters().medium();
-        if ist_medium != media::Type::Audio
-            && ist_medium != media::Type::Video
-            && ist_medium != media::Type::Subtitle
-        {
-            stream_mapping[ist_index] = -1;
-            continue;
-        }
-        stream_mapping[ist_index] = ost_index;
-        ist_time_bases[ist_index] = is.time_base();
-        ost_index += 1;
         let imeta = is.metadata();
 
         let mut os = output.add_stream(encoder::find(codec::Id::None)).unwrap();
@@ -62,14 +48,9 @@ fn main() {
 
     for (stream, mut packet) in input.packets() {
         let ist_index = stream.index();
-        let ost_index = stream_mapping[ist_index];
-        if ost_index < 0 {
-            continue;
-        }
-        let ost = output.stream(ost_index as _).unwrap();
-        packet.rescale_ts(ist_time_bases[ist_index], ost.time_base());
+        let ost = output.stream(ist_index as _).unwrap();
         packet.set_position(-1);
-        packet.set_stream(ost_index as _);
+        packet.set_stream(ist_index as _);
         packet.write_interleaved(&mut output).unwrap();
     }
 
