@@ -28,6 +28,16 @@ fn main() {
             }
         }
 
+        if ist_medium == media::Type::Attachment {
+            if let Some(filename) = imeta.get("filename") {
+                ometa.set("filename", filename);
+            }
+
+            if let Some(mimetype) = imeta.get("mimetype") {
+                ometa.set("mimetype", mimetype);
+            }
+        }
+
         os.set_metadata(ometa);
     }
 
